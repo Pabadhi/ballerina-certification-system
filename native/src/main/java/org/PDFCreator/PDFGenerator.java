@@ -26,9 +26,22 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import java.io.File;
 import java.io.IOException;
 
-
 public class PDFGenerator {
-    public static void pdf(String inputFilePath, String replacement, String font_type, int fontSize, int centerX,int centerY,String fontFilePath, String outputFileName) {
+    /**
+     * This method is used to generate a PDF file with the given text.
+     * 
+     * @param inputFilePath  The path to the input PDF file.
+     * @param replacement    The text to be written on the PDF.
+     * @param font_type      The font type to be used.
+     * @param fontSize       The font size to be used.
+     * @param centerX        The X coordinate of the center of the text.
+     * @param centerY        The Y coordinate of the center of the text.
+     * @param fontFilePath   The path to the custom font file.
+     * @param outputFileName The name of the output PDF file.
+     */
+    
+    public static void pdf(String inputFilePath, String replacement, String font_type, int fontSize, int centerX,
+            int centerY, String fontFilePath, String outputFileName) {
         String outputDirectory = "outputs/";
         File inputFile = new File(inputFilePath);
         File outputDir = new File(outputDirectory);
@@ -41,36 +54,29 @@ public class PDFGenerator {
         try (PDDocument pdfDocument = PDDocument.load(inputFile)) {
             PDPage page = pdfDocument.getPage(0);
             float centerXF = centerX < 0 ? (float) (page.getMediaBox().getWidth() / 2.0) : centerX;
+            PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page,
+                    PDPageContentStream.AppendMode.APPEND, true, true);
+                    
             if ("CUSTOM".equals(font_type)) {
-                File fontFile=new File(fontFilePath);
-                PDType0Font font = PDType0Font.load(pdfDocument,fontFile);
-                PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page,
-                        PDPageContentStream.AppendMode.APPEND, true, true);
+                File fontFile = new File(fontFilePath);
+                PDType0Font font = PDType0Font.load(pdfDocument, fontFile);
                 contentStream.setFont(font, fontSize);
                 nameWidth = font.getStringWidth(replacement) / 1000 * fontSize;
                 nameHeight = (font.getFontDescriptor().getCapHeight()) / 1000 * fontSize;
-                float posY = centerY + nameHeight + 7.5f;
-                float posX = centerXF - (nameWidth / 2.0f);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(posX, posY);
-                contentStream.showText(replacement);
-                contentStream.endText();
-                contentStream.close();
+
             } else {
                 PDType1Font font = getFontByName.getFontByName(font_type);
-                PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page,
-                        PDPageContentStream.AppendMode.APPEND, true, true);
                 contentStream.setFont(font, fontSize);
                 nameWidth = font.getStringWidth(replacement) / 1000 * fontSize;
                 nameHeight = (font.getFontDescriptor().getCapHeight()) / 1000 * fontSize;
-                float posY = centerY + nameHeight + 7.5f;
-                float posX = centerXF - (nameWidth / 2.0f);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(posX, posY);
-                contentStream.showText(replacement);
-                contentStream.endText();
-                contentStream.close();
             }
+            float posY = centerY + nameHeight + 7.5f;
+            float posX = centerXF - (nameWidth / 2.0f);
+            contentStream.beginText();
+            contentStream.newLineAtOffset(posX, posY);
+            contentStream.showText(replacement);
+            contentStream.endText();
+            contentStream.close();
             pdfDocument.save(outputFilePath);
             System.out.println("Name written successfully. Modified PDF saved to: " + outputFilePath);
         } catch (IOException e) {

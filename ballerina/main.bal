@@ -21,10 +21,16 @@
 // These lines describe the conditions under which the software is distributed and disclaim any warranties or conditions.
 
 import ballerina/file;
+
 import ballerina/http;
+
 import ballerina/io;
+
 import ballerina/jballerina.java;
+
 import ballerina/regex;
+
+
 import ballerinax/googleapis.sheets as gsheets;
 
 configurable string pdfFilePath = ?;
@@ -34,8 +40,7 @@ configurable string clientSecret = ?;
 configurable string refreshToken = ?;
 configurable string refreshUrl = ?;
 configurable string spreadsheetId = ?;
-
-
+configurable int port = 9090;
 
 gsheets:Client spreadsheetClient = check new ({
     auth: {
@@ -46,11 +51,11 @@ gsheets:Client spreadsheetClient = check new ({
     }
 });
 
-type ID record {
-    string id;
-};
-
 string file_path = "";
+const PDF_EXTENSION=".pdf";
+const OUTPUT_DIRECTORY="outputs/";
+const FILE_NAME = "certificate.pdf";
+const NAME_COLUMN = "C";
 
 public function PDFGenerator(handle inputFilePath, handle replacement, handle font_type, int fontsize, int centerX, int centerY, handle fontFilePath, handle outputFileName) = @java:Method {
     'class: "org.PDFCreator.PDFGenerator",
@@ -58,35 +63,21 @@ public function PDFGenerator(handle inputFilePath, handle replacement, handle fo
 } external;
 
 public function certicateGeneration(string inputFilePath, string fontFilePath, string checkID, string sheetName) returns error? {
-    gsheets:Column col = check spreadsheetClient->getColumn(spreadsheetId, sheetName, "C");
+    gsheets:Column col = check spreadsheetClient->getColumn(spreadsheetId, sheetName, NAME_COLUMN);
     int i = 1;
     while i < col.values.length() {
         gsheets:Row row = check spreadsheetClient->getRow(spreadsheetId, sheetName, i);
         if row.values[3].toString() == checkID {
             string replacement = col.values[i].toString();
             string font_type = row.values[6].toString();
-            io:println(font_type);
             string fontsizeStr = row.values[7].toString();
             string centerXstr = row.values[4].toString();
             string centerYstr = row.values[5].toString();
-            int|error f = int:fromString(fontsizeStr);
-            int|error x = int:fromString(centerXstr);
-            int|error y = int:fromString(centerYstr);
-            int fontsize = 16;
-            int centerX = -1;
-            int centerY = 250;
-            if (f is int) {
-                fontsize = f;
-            }
-            if (x is int) {
-                centerX = x;
-            }
-            if (y is int) {
-                centerY = y;
-            }
-            io:println(replacement);
-            string file_name = replacement + ".pdf";
-            file_path = "outputs/" + file_name;
+            int fontsize = check int:fromString(fontsizeStr);
+            int centerX = check int:fromString(centerXstr);
+            int centerY = check int:fromString(centerYstr);
+            string file_name = replacement + PDF_EXTENSION;
+            file_path = OUTPUT_DIRECTORY + file_name;
             handle javastrName = java:fromString(replacement);
             handle javafont_type = java:fromString(font_type);
             handle javafontPath = java:fromString(fontFilePath);
@@ -96,11 +87,10 @@ public function certicateGeneration(string inputFilePath, string fontFilePath, s
             break;
         }
         i += 1;
-
     }
 }
 
-service / on new http:Listener(9090) {
+service / on new http:Listener(port) {
     resource function get certificates/[string value]() returns http:Response|error {
         string[] data = regex:split(value, "-");
         string ID = data[1];
@@ -108,7 +98,7 @@ service / on new http:Listener(9090) {
         error? err = certicateGeneration(pdfFilePath, fontFilePath, ID, sheetName);
         byte[] bytes = check io:fileReadBytes(file_path);
         http:Response response = new;
-        if err == null {
+        if err == () {
             response.setPayload(bytes);
             response.statusCode = 200;
             response.setHeader("Content-Type", "application/pdf");
@@ -118,7 +108,6 @@ service / on new http:Listener(9090) {
             response.setJsonPayload("invalid");
             response.statusCode = 400;
         }
-
         return response;
     }
 }

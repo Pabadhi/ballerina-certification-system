@@ -53,6 +53,6 @@ public class getFontByName {
             default:
                 throw new IllegalArgumentException("Invalid font name: " + fontName);
         }
-    }
-    
+    }   
 }
+

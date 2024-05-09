@@ -103,14 +103,14 @@ service / on new http:Listener(port) {
         string ID = data[1];
         string sheetName = data[0];
         error? err = certificateGeneration(pdfFilePath, fontFilePath, ID, sheetName);
+        byte[]|io:Error dataRead =  io:fileReadBytes(filePath);
         http:Response response = new;
-        if err is error {
+        if err is error || dataRead is io:Error{ 
             response.setJsonPayload("invalid");
             response.statusCode = ERROR_CODE;
             return response;
         }
-        byte[] bytes = check io:fileReadBytes(filePath);
-        response.setPayload(bytes);
+        response.setPayload(check io:fileReadBytes(filePath));
         response.statusCode = SUCCESS_CODE;
         response.setHeader("Content-Type", CONTENT_TYPE);
         response.setHeader("Content-Disposition", CONTENT_DISPOSITION);

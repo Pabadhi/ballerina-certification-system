@@ -33,60 +33,67 @@ import ballerina/regex;
 
 import ballerinax/googleapis.sheets as gsheets;
 
+type Auth record {|
+    string clientId;
+    string clientSecret;
+    string refreshToken;
+    string refreshUrl;
+
+|};
+
 configurable string pdfFilePath = ?;
 configurable string fontFilePath = ?;
-configurable string clientId = ?;
-configurable string clientSecret = ?;
-configurable string refreshToken = ?;
-configurable string refreshUrl = ?;
-configurable string spreadsheetId = ?;
 configurable int port = 9090;
+configurable string spreadsheetId = ?;
+configurable Auth auth = ?;
 
-gsheets:Client spreadsheetClient = check new ({
-    auth: {
-        clientId,
-        clientSecret,
-        refreshToken,
-        refreshUrl
-    }
-});
-
-string file_path = "";
-const PDF_EXTENSION=".pdf";
-const OUTPUT_DIRECTORY="outputs/";
+const PDF_EXTENSION = ".pdf";
+const OUTPUT_DIRECTORY = "outputs/";
 const FILE_NAME = "certificate.pdf";
 const NAME_COLUMN = "C";
+const SUCCESS_CODE = 200;
+const ERROR_CODE = 400;
+const CONTENT_TYPE = "application/pdf";
+const CONTENT_DISPOSITION = "inline; filename='certificate.pdf'";
 
-public function PDFGenerator(handle inputFilePath, handle replacement, handle font_type, int fontsize, int centerX, int centerY, handle fontFilePath, handle outputFileName) = @java:Method {
+gsheets:Client spreadsheetClient = check new ({
+    auth: auth
+});
+
+string filePath = "";
+isolated function generatePdf(handle pdfGenerator) = @java:Method {
     'class: "org.PDFCreator.PDFGenerator",
     name: "pdf"
 } external;
 
-public function certicateGeneration(string inputFilePath, string fontFilePath, string checkID, string sheetName) returns error? {
+isolated function generateParams(handle inputFilePath, handle replacement, handle fontType, int fontsize, int centerX, int centerY, handle fontFilePath, handle outputFileName) returns handle = @java:Method {
+    'class: "org.PDFCreator.PDFGenerationParams",
+    name: "createInstance"
+} external;
+
+public function certificateGeneration(string inputFilePath, string fontFilePath, string checkID, string sheetName) returns error? {
     gsheets:Column col = check spreadsheetClient->getColumn(spreadsheetId, sheetName, NAME_COLUMN);
     int i = 1;
     while i < col.values.length() {
         gsheets:Row row = check spreadsheetClient->getRow(spreadsheetId, sheetName, i);
         if row.values[3].toString() == checkID {
             string replacement = col.values[i].toString();
-            string font_type = row.values[6].toString();
-            string fontsizeStr = row.values[7].toString();
-            string centerXstr = row.values[4].toString();
-            string centerYstr = row.values[5].toString();
-            int fontsize = check int:fromString(fontsizeStr);
-            int centerX = check int:fromString(centerXstr);
-            int centerY = check int:fromString(centerYstr);
-            string file_name = replacement + PDF_EXTENSION;
-            file_path = OUTPUT_DIRECTORY + file_name;
+            string fileName = replacement + PDF_EXTENSION;
+            filePath = OUTPUT_DIRECTORY + fileName;
+            int fontsize = check int:fromString(row.values[7].toString());
+            int centerX = check int:fromString(row.values[4].toString());
+            int centerY = check int:fromString(row.values[5].toString());
             handle javastrName = java:fromString(replacement);
-            handle javafont_type = java:fromString(font_type);
+            handle javafontType = java:fromString(row.values[6].toString());
             handle javafontPath = java:fromString(fontFilePath);
             handle pdfpath = java:fromString(inputFilePath);
-            handle javaOurputfileName = java:fromString(file_name);
-            PDFGenerator(pdfpath, javastrName, javafont_type, fontsize, centerX, centerY, javafontPath, javaOurputfileName);
+            handle javaOurputfileName = java:fromString(fileName);
+            handle pdfData = generateParams(pdfpath, javastrName, javafontType, fontsize, centerX, centerY, javafontPath, javaOurputfileName);
+            generatePdf(pdfData);
             break;
         }
         i += 1;
+
     }
 }
 
@@ -95,21 +102,20 @@ service / on new http:Listener(port) {
         string[] data = regex:split(value, "-");
         string ID = data[1];
         string sheetName = data[0];
-        error? err = certicateGeneration(pdfFilePath, fontFilePath, ID, sheetName);
-        byte[] bytes = check io:fileReadBytes(file_path);
+        error? err = certificateGeneration(pdfFilePath, fontFilePath, ID, sheetName);
         http:Response response = new;
-        if err == () {
-            response.setPayload(bytes);
-            response.statusCode = 200;
-            response.setHeader("Content-Type", "application/pdf");
-            response.setHeader("Content-Disposition", "inline; filename='certificate.pdf'");
-            check file:remove(file_path);
-        } else {
+        if err is error {
             response.setJsonPayload("invalid");
-            response.statusCode = 400;
+            response.statusCode = ERROR_CODE;
+            return response;
         }
+        byte[] bytes = check io:fileReadBytes(filePath);
+        response.setPayload(bytes);
+        response.statusCode = SUCCESS_CODE;
+        response.setHeader("Content-Type", CONTENT_TYPE);
+        response.setHeader("Content-Disposition", CONTENT_DISPOSITION);
+        check file:remove(filePath);
         return response;
     }
 }
-
 

@@ -19,7 +19,22 @@ package org.PDFCreator;
 
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 
+/**
+ * This class provides a method to get a PDType1Font object by its name.
+ */
+
 public class getFontByName {
+    /**
+     * Returns a PDType1Font object based on the provided font name.
+     * The method supports the following font names: TIMES_ROMAN, TIMES_BOLD, TIMES_ITALIC, TIMES_BOLD_ITALIC,
+     * HELVETICA, HELVETICA_BOLD, HELVETICA_OBLIQUE, HELVETICA_BOLD_OBLIQUE, COURIER, COURIER_BOLD,
+     * COURIER_OBLIQUE, COURIER_BOLD_OBLIQUE, SYMBOL, ZAPF_DINGBATS.
+     *
+     * @param fontName The name of the font. It is case insensitive.
+     * @return The PDType1Font object corresponding to the provided font name.
+     * @throws IllegalArgumentException if the provided font name is not supported.
+     */
+    
     public static PDType1Font getFontByName(String fontName) {
         switch (fontName.toUpperCase()) {
             case "TIMES_ROMAN":
@@ -53,6 +68,6 @@ public class getFontByName {
             default:
                 throw new IllegalArgumentException("Invalid font name: " + fontName);
         }
-    }   
+    }
+    
 }
-

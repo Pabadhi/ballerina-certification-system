@@ -44,6 +44,8 @@
          String outputFilePath = outputDirectory + params.outputFileName;
          try (PDDocument pdfDocument = PDDocument.load(inputFile)) {
              PDPage page = pdfDocument.getPage(0);
+             // if centerX is negative, the text will be centered horizontally
+             //page.getMediaBox().getWidth()- this will get the width of the page
              float centerXF = params.centerX < 0 ? (float) (page.getMediaBox().getWidth() / 2.0) : params.centerX;
              PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page,
                      PDPageContentStream.AppendMode.APPEND, true, true);

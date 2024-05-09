@@ -41,11 +41,7 @@ task customFatJar(type: Jar) {
 }
 task buildBallerina(type: Exec) {
     dependsOn customFatJar
-    commandLine 'bal', 'build', "$rootDir/ballerina"
-}
-task copyConfig(type: Copy) {
-    from "$rootDir/ballerina/Config.toml"
-    into "$rootDir"
+    commandLine 'bal', 'build', "$rootDir/ballerina/service/backend"
 }
 
 build.dependsOn buildBallerina

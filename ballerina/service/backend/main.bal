@@ -95,7 +95,6 @@ public function certificateGeneration(string inputFilePath, string fontFilePath,
             break;
         }
         i += 1;
-
     }
 }
 

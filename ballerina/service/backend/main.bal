@@ -34,13 +34,6 @@ type Auth record {|
     string refreshUrl;
 |};
 
-type Conflict record {|
-    *http:Conflict;
-    record {
-        string message;
-    } body;
-|};
-
 configurable string pdfFilePath = ?;
 configurable string fontFilePath = ?;
 configurable int port = 9090;
